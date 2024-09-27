@@ -4,7 +4,8 @@ import os
 import subprocess
 import urllib.parse
 from datetime import datetime
-from image_management import add_image, generate_thumbnail
+from image_management import add_image
+from generate_thumbnail import generate_thumbnail
 
 app = Flask(__name__)
 
