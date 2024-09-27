@@ -1,4 +1,5 @@
 from PIL import Image
+from image_conversion import image_conversion
 import os
 
 def generate_thumbnail(image_path, thumbnail_size=(150, 150), quality=80):
