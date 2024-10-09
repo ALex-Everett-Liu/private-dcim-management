@@ -143,7 +143,7 @@ app.post('/add_image', upload.single('thumbnail'), async (req, res) => {
   
       db.run(
         'INSERT INTO images (filename, url, file_size, rating, ranking, tags, creation_time, person, location, type, thumbnail_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [safeFilename, url, file_size, rating, ranking, tags, creationTime, person, location, type, thumbnailPath],
+        [safeFilename, url, fileSizeInBytes, rating, ranking, tags, creationTime, person, location, type, thumbnailPath],
         err => {
           if (err) {
             console.error('Database insertion error:', err);
