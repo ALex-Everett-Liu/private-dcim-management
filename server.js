@@ -46,7 +46,7 @@ function parseFileSize(sizeString) {
     return Math.round(size * units[unit]);
   }
 
-function generateThumbnail(imagePath, thumbnailSize = { width: 150, height: 150 }, quality = 60) {
+function generateThumbnail(imagePath, maxSize = 150, quality = 60) {
     const thumbnailDir = path.join(__dirname, 'public/thumbnails');
     fs.mkdirSync(thumbnailDir, { recursive: true });
   
@@ -54,15 +54,31 @@ function generateThumbnail(imagePath, thumbnailSize = { width: 150, height: 150 
     const thumbnailPath = path.join(thumbnailDir, thumbnailFilename);
   
     return sharp(imagePath)
-      .resize(thumbnailSize.width, thumbnailSize.height)
-      .webp({ quality: quality })
-      .toFile(thumbnailPath)
+      .metadata()
+      .then(metadata => {
+        const aspectRatio = metadata.width / metadata.height;
+        let resizeOptions;
+  
+        if (aspectRatio > 1) {
+          // Image is wider than it is tall
+          resizeOptions = { width: maxSize };
+        } else {
+          // Image is taller than it is wide or square
+          resizeOptions = { height: maxSize };
+        }
+  
+        return sharp(imagePath)
+          .resize(resizeOptions)
+          .webp({ quality: quality })
+          .toFile(thumbnailPath);
+      })
       .then(() => `/thumbnails/${thumbnailFilename}`) // Return the relative URL path
       .catch(err => {
         console.error('Error generating thumbnail:', err);
         return null;
       });
   }
+  
 
   function processThumbPath(thumbPath) {
     if (!thumbPath) {
@@ -111,7 +127,7 @@ app.post('/add_image', upload.single('thumbnail'), async (req, res) => {
       
       fs.renameSync(req.file.path, originalImagePath);
   
-      const thumbnailPath = await generateThumbnail(originalImagePath);
+      const thumbnailPath = await generateThumbnail(originalImagePath, 150);
       if (!thumbnailPath) {
         return res.status(500).send('Thumbnail generation error');
       }
