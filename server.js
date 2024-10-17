@@ -15,6 +15,7 @@ app.set('views', path.join(__dirname, 'views'));
 // Middleware to serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/thumbnails', express.static('Q:\\Picture@2024\\static\\thumbnails'));
+app.use('/assets', express.static('Q:\\Picture@2024\\static\\assets'));
 app.use(express.urlencoded({ extended: true }));
 
 // Connect to SQLite database
