@@ -2,11 +2,17 @@ const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const multer = require('multer');
 const sharp = require('sharp');
+const chokidar = require('chokidar');
 const path = require('path');
 const fs = require('fs');
 
 const app = express();
+const port = 3011;
 const upload = multer({ dest: 'uploads/' }); // Configure multer for file uploads
+
+// Directories to watch
+const thumbnailsDir = 'Q:\\Picture@2024\\static\\thumbnails';
+const assetsDir = 'Q:\\Picture@2024\\static\\assets';
 
 // Set up EJS for templating
 app.set('view engine', 'ejs');
@@ -14,8 +20,8 @@ app.set('views', path.join(__dirname, 'views'));
 
 // Middleware to serve static files
 app.use(express.static(path.join(__dirname, 'public')));
-app.use('/thumbnails', express.static('Q:\\Picture@2024\\static\\thumbnails'));
-app.use('/assets', express.static('Q:\\Picture@2024\\static\\assets'));
+app.use('/thumbnails', express.static(thumbnailsDir));
+app.use('/assets', express.static(assetsDir));
 app.use(express.urlencoded({ extended: true }));
 
 // Connect to SQLite database
@@ -167,7 +173,25 @@ app.use((err, req, res, next) => {
     }
   });
 
-// Start server
-app.listen(3011, () => {
-  console.log('Server running on http://localhost:3011');
+// Set up file watchers
+const watchOptions = {
+    persistent: true,
+    ignoreInitial: false,
+    awaitWriteFinish: {
+        stabilityThreshold: 2000,
+        pollInterval: 100
+    }
+};
+
+chokidar.watch(thumbnailsDir, watchOptions).on('all', (event, path) => {
+    console.log(`Thumbnails directory: ${event} detected on ${path}`);
+});
+
+chokidar.watch(assetsDir, watchOptions).on('all', (event, path) => {
+    console.log(`Assets directory: ${event} detected on ${path}`);
+});
+
+// Start the server
+app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`);
 });
