@@ -53,6 +53,22 @@
         .nav-links a {
             margin-right: 15px;
         }
+        .error-message {
+            color: #f44336;
+            background-color: #ffebee;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        .success-message {
+            color: #4CAF50;
+            background-color: #E8F5E9;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -63,6 +79,9 @@
     </div>
 
     <h1>DCIM Settings</h1>
+    
+    <div class="error-message" id="errorMessage"></div>
+    <div class="success-message" id="successMessage"></div>
     
     <div class="settings-group">
         <h2>Directory Settings</h2>
@@ -93,18 +112,28 @@
             loadSettings();
         });
         
+        function showError(message) {
+            $('#errorMessage').text(message).show();
+            setTimeout(() => $('#errorMessage').hide(), 5000);
+        }
+        
+        function showSuccess(message) {
+            $('#successMessage').text(message).show();
+            setTimeout(() => $('#successMessage').hide(), 5000);
+        }
+        
         function loadSettings() {
             $.ajax({
                 url: '/api/settings',
                 method: 'GET',
                 success: function(data) {
-                    $('#rootDirectory').val(data.rootDirectory);
-                    $('#thumbnailsDir').val(data.thumbnailsDir);
-                    $('#assetsDir').val(data.assetsDir);
+                    $('#rootDirectory').val(data.rootDirectory || '');
+                    $('#thumbnailsDir').val(data.thumbnailsDir || '');
+                    $('#assetsDir').val(data.assetsDir || '');
                 },
                 error: function(err) {
                     console.error('Error loading settings:', err);
-                    alert('Failed to load settings');
+                    showError('Failed to load settings. Please check the console for details.');
                 }
             });
         }
@@ -124,17 +153,18 @@
                         success: function(data) {
                             $('#thumbnailsDir').val(data.thumbnailsDir);
                             $('#assetsDir').val(data.assetsDir);
-                            alert('Directories updated successfully!');
+                            showSuccess('Directories updated successfully!');
                         },
-                        error: function(err) {
-                            console.error('Error updating directories:', err);
-                            alert('Failed to update directories');
+                        error: function(xhr, status, error) {
+                            console.error('Error updating directories:', xhr.responseJSON || error);
+                            showError('Failed to update directories: ' + 
+                                     (xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : error));
                         }
                     });
                 }
             } catch (error) {
                 console.error('Error selecting directory:', error);
-                alert('Error selecting directory');
+                showError('Error selecting directory: ' + error.message);
             }
         });
     </script>

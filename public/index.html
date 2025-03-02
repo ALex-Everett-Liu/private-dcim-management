@@ -134,7 +134,7 @@
                             { 
                                 data: 'thumbnail_path',
                                 render: function(data) {
-                                    return `<img src="${data}" alt="Thumbnail" class="thumbnail">`;
+                                    return `<img src="${data}" alt="Thumbnail" class="thumbnail" onerror="this.onerror=null; this.src='/thumbnails/default-thumbnail.jpg';">`;
                                 }
                             },
                             { data: 'filename' },
