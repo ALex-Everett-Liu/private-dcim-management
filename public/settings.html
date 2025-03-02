@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DCIM Settings</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        .settings-group {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: 80%;
+            padding: 8px;
+        }
+        button {
+            padding: 8px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .directory-picker {
+            display: flex;
+            gap: 10px;
+        }
+        .nav-links {
+            margin-bottom: 20px;
+        }
+        .nav-links a {
+            margin-right: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/add-image">Add Image</a>
+        <a href="/settings">Settings</a>
+    </div>
+
+    <h1>DCIM Settings</h1>
+    
+    <div class="settings-group">
+        <h2>Directory Settings</h2>
+        
+        <div class="form-group">
+            <label for="rootDirectory">Root Directory</label>
+            <div class="directory-picker">
+                <input type="text" id="rootDirectory" readonly>
+                <button id="selectDirectory">Browse...</button>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="thumbnailsDir">Thumbnails Directory</label>
+            <input type="text" id="thumbnailsDir" readonly>
+        </div>
+        
+        <div class="form-group">
+            <label for="assetsDir">Assets Directory</label>
+            <input type="text" id="assetsDir" readonly>
+        </div>
+    </div>
+    
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // Load settings when page loads
+        $(document).ready(function() {
+            loadSettings();
+        });
+        
+        function loadSettings() {
+            $.ajax({
+                url: '/api/settings',
+                method: 'GET',
+                success: function(data) {
+                    $('#rootDirectory').val(data.rootDirectory);
+                    $('#thumbnailsDir').val(data.thumbnailsDir);
+                    $('#assetsDir').val(data.assetsDir);
+                },
+                error: function(err) {
+                    console.error('Error loading settings:', err);
+                    alert('Failed to load settings');
+                }
+            });
+        }
+        
+        // Use the Electron API exposed by preload.js
+        document.getElementById('selectDirectory').addEventListener('click', async () => {
+            try {
+                const selectedDir = await window.electron.selectDirectory();
+                if (selectedDir) {
+                    document.getElementById('rootDirectory').value = selectedDir;
+                    // Make an API call to update settings
+                    $.ajax({
+                        url: '/api/settings/update-directories',
+                        method: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({ rootDirectory: selectedDir }),
+                        success: function(data) {
+                            $('#thumbnailsDir').val(data.thumbnailsDir);
+                            $('#assetsDir').val(data.assetsDir);
+                            alert('Directories updated successfully!');
+                        },
+                        error: function(err) {
+                            console.error('Error updating directories:', err);
+                            alert('Failed to update directories');
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error selecting directory:', error);
+                alert('Error selecting directory');
+            }
+        });
+    </script>
+</body>
+</html> 

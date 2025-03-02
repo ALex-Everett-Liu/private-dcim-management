@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add New Image</title>
+    <style>
+        form {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        label, input, textarea {
+            display: block;
+            margin-bottom: 10px;
+            width: 100%;
+        }
+        .optional-label::after {
+            content: " (optional)";
+            font-size: 0.8em;
+            color: #666;
+        }
+        .nav-links {
+            margin-bottom: 20px;
+        }
+        .nav-links a {
+            margin-right: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/add-image">Add Image</a>
+        <a href="/settings">Settings</a>
+    </div>
+    <h1>Add New Image</h1>
+    <form action="/add_image" method="post" enctype="multipart/form-data">
+        <label for="filename">Filename:</label>
+        <input type="text" id="filename" name="filename" required>
+
+        <label for="url">URL:</label>
+        <input type="url" id="url" name="url" required>
+
+        <label for="file_size">File Size (e.g., 1.5 MB):</label>
+        <input type="text" id="file_size" name="file_size" required>
+
+        <label for="rating">Rating:</label>
+        <input type="number" id="rating" name="rating" step="0.01" min="0" max="10" required>
+
+        <label for="ranking">Ranking:</label>
+        <input type="number" id="ranking" name="ranking" step="0.1" min="0" max="1000" required>
+
+        <label for="tags" class="optional-label">Tags (comma-separated):</label>
+        <textarea id="tags" name="tags"></textarea>
+
+        <label for="creation_time" class="optional-label">Creation Time (YYYY-MM-DD HH:MM:SS):</label>
+        <input type="text" id="creation_time" name="creation_time">
+
+        <label for="person" class="optional-label">Person:</label>
+        <input type="text" id="person" name="person">
+
+        <label for="location" class="optional-label">Location:</label>
+        <input type="text" id="location" name="location">
+
+        <label for="type">Type:</label>
+        <input type="text" id="type" name="type" required>
+
+        <label for="thumbnail">Original Image:</label>
+        <input type="file" id="thumbnail" name="thumbnail" accept="image/*">
+
+        <input type="submit" value="Add Image">
+    </form>
+</body>
+</html> 

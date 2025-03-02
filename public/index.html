@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Favorite Images</title>
+
+    <!-- Include DataTables CSS -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.css">
+
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .pagination {
+            margin: 20px 0;
+        }
+        .pagination a {
+            margin: 0 5px;
+            text-decoration: none;
+            padding: 5px 10px;
+            border: 1px solid #007BFF;
+            color: #007BFF;
+        }
+        .pagination a.active {
+            background-color: #007BFF;
+            color: white;
+        }
+        #ranking-filter {
+            margin-bottom: 10px;
+        }
+        .thumbnail {
+            max-width: 150px;
+            max-height: 150px;
+        }
+        /* Adjust column widths */
+        .filename {
+            width: 8%;
+        }
+        .url {
+            width: 30.5%;
+        }
+        .tags {
+            width: 15.5%;
+        }
+        #pagination-controls {
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+        }
+        #pagination-controls input {
+            width: 50px;
+            margin: 0 10px;
+        }
+        .nav-links {
+            margin-bottom: 20px;
+        }
+        .nav-links a {
+            margin-right: 15px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Favorite Images</h1>
+
+    <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/add-image">Add Image</a>
+        <a href="/settings">Settings</a>
+    </div>
+
+    <!-- Add this new div for pagination controls -->
+    <div id="pagination-controls">
+        <span id="pagination-info"></span>
+        <input type="number" id="page-input" min="1" value="1">
+        <button id="go-to-page">Go to Page</button>
+    </div>
+
+    <!-- Add ranking filter inputs -->
+    <div id="ranking-filter">
+        <label for="min-ranking">Min Ranking:</label>
+        <input type="number" id="min-ranking" min="1" value="1">
+        <label for="max-ranking">Max Ranking:</label>
+        <input type="number" id="max-ranking" min="1" value="100">
+        <button id="apply-ranking-filter">Apply Filter</button>
+    </div>
+
+    <!-- Add an id to the table for DataTables -->
+    <table id="favorite-images-table" class="display">
+        <thead>
+            <tr>
+                <th>Thumbnail</th>
+                <th class="filename">Filename</th>
+                <th class="url">URL</th>
+                <th>File Size</th>
+                <th>Rating</th>
+                <th>Ranking</th>
+                <th class="tags">Tags</th>
+                <th>Creation Time</th>
+                <th>Person</th>
+                <th>Location</th>
+                <th>Type</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Data will be loaded via JavaScript -->
+        </tbody>
+    </table>
+
+    <!-- Include jQuery and DataTables JS -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.js"></script>
+
+    <!-- Initialize DataTables -->
+    <script>
+        $(document).ready(function () {
+            // Load images from API
+            $.ajax({
+                url: '/api/images',
+                method: 'GET',
+                success: function(data) {
+                    let table = $('#favorite-images-table').DataTable({
+                        data: data,
+                        columns: [
+                            { 
+                                data: 'thumbnail_path',
+                                render: function(data) {
+                                    return `<img src="${data}" alt="Thumbnail" class="thumbnail">`;
+                                }
+                            },
+                            { data: 'filename' },
+                            { 
+                                data: 'url',
+                                render: function(data) {
+                                    return `<a href="${data}" target="_blank">${data}</a>`;
+                                }
+                            },
+                            { data: 'file_size' },
+                            { data: 'rating' },
+                            { data: 'ranking' },
+                            { 
+                                data: 'tags',
+                                render: function(data) {
+                                    if (!data) return '';
+                                    return data.split(',').map(tag => tag.trim()).join('<br>');
+                                }
+                            },
+                            { data: 'creation_time' },
+                            { data: 'person' },
+                            { data: 'location' },
+                            { data: 'type' }
+                        ],
+                        "pageLength": 30,
+                        "lengthMenu": [[30, 50, 100, -1], [30, 50, 100, "All"]],
+                        "dom": '<"top"if>rt<"bottom"p><"clear">',
+                        "drawCallback": function(settings) {
+                            var api = this.api();
+                            var pageInfo = api.page.info();
+                            $('#pagination-info').html('Showing ' + (pageInfo.start + 1) + ' to ' + pageInfo.end + ' of ' + pageInfo.recordsDisplay + ' entries' +
+                                (pageInfo.recordsDisplay !== pageInfo.recordsTotal ? ' (filtered from ' + pageInfo.recordsTotal + ' total entries)' : ''));
+                        }
+                    });
+
+                    // Custom filtering function for ranking range
+                    $.fn.dataTable.ext.search.push(
+                        function(settings, data, dataIndex) {
+                            var min = parseInt($('#min-ranking').val(), 10);
+                            var max = parseInt($('#max-ranking').val(), 10);
+                            var ranking = parseFloat(data[5]) || 0; // Assuming ranking is in the 6th column (index 5)
+
+                            if ((isNaN(min) && isNaN(max)) ||
+                                (isNaN(min) && ranking <= max) ||
+                                (min <= ranking && isNaN(max)) ||
+                                (min <= ranking && ranking <= max)) {
+                                return true;
+                            }
+                            return false;
+                        }
+                    );
+
+                    // Event listener for manual page input
+                    $('#go-to-page').click(function() {
+                        var page = parseInt($('#page-input').val(), 10);
+                        var totalPages = table.page.info().pages;
+                        if (page > 0 && page <= totalPages) {
+                            table.page(page - 1).draw('page');
+                        } else {
+                            alert('Invalid page number. Please enter a number between 1 and ' + totalPages);
+                        }
+                    });
+
+                    // Event listener for the apply filter button
+                    $('#apply-ranking-filter').click(function() {
+                        table.draw();
+                    });
+
+                    // Event listeners to redraw on input change
+                    $('#min-ranking, #max-ranking').keyup(function() {
+                        table.draw();
+                    });
+                },
+                error: function(err) {
+                    console.error('Error loading images:', err);
+                    alert('Failed to load images. Please check console for details.');
+                }
+            });
+        });
+    </script>
+</body>
+</html> 
