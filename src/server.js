@@ -233,7 +233,7 @@ async function setupServer(expressApp, electronApp) {
       }
     });
 
-    // Add image endpoint
+    // Add image endpoint - modified to work with existing files
     expressApp.post('/add_image', upload.single('thumbnail'), async (req, res) => {
       try {
         console.log('Received add image request:', req.body);
@@ -248,7 +248,8 @@ async function setupServer(expressApp, electronApp) {
           creation_time, 
           person = '', 
           location = '', 
-          type 
+          type,
+          use_existing_file = 'false' // New parameter to indicate if we should use an existing file
         } = req.body;
         
         // Validate required fields
@@ -256,16 +257,47 @@ async function setupServer(expressApp, electronApp) {
           return res.status(400).send('Missing required fields');
         }
         
-        if (!req.file) {
-          return res.status(400).send('No image uploaded');
-        }
-        
-        // Process the uploaded file
+        // Process the file path
         const safeFilename = path.basename(filename); // Sanitize filename
         const originalImagePath = path.join(assetsDir, safeFilename);
         
-        // Move the uploaded file to the assets directory
-        fs.renameSync(req.file.path, originalImagePath);
+        // Check if we should use an existing file or process an upload
+        if (use_existing_file === 'true') {
+          // Check if the file exists in the assets directory
+          if (!fs.existsSync(originalImagePath)) {
+            return res.status(404).send(`File ${safeFilename} not found in assets directory`);
+          }
+          console.log(`Using existing file: ${originalImagePath}`);
+        } else {
+          // Process uploaded file
+          if (!req.file) {
+            return res.status(400).send('No image uploaded');
+          }
+          
+          // Use copy instead of rename to handle cross-device operations
+          try {
+            // Create a read stream from the source
+            const readStream = fs.createReadStream(req.file.path);
+            // Create a write stream to the destination
+            const writeStream = fs.createWriteStream(originalImagePath);
+            
+            // Wait for the copy to complete
+            await new Promise((resolve, reject) => {
+              readStream.on('error', reject);
+              writeStream.on('error', reject);
+              writeStream.on('finish', resolve);
+              readStream.pipe(writeStream);
+            });
+            
+            // Delete the source file after successful copy
+            fs.unlinkSync(req.file.path);
+            
+            console.log(`File copied from ${req.file.path} to ${originalImagePath}`);
+          } catch (copyError) {
+            console.error('Error copying file:', copyError);
+            return res.status(500).send('Error copying uploaded file: ' + copyError.message);
+          }
+        }
         
         // Generate thumbnail
         const thumbnailPath = await generateThumbnail(originalImagePath, 150);

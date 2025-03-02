@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Add New Image</title>
     <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
         form {
             max-width: 500px;
             margin: 0 auto;
@@ -25,6 +31,36 @@
         .nav-links a {
             margin-right: 15px;
         }
+        .error-message {
+            color: #f44336;
+            background-color: #ffebee;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        input[type="submit"] {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: auto;
+        }
+        input[type="submit"]:hover {
+            background-color: #45a049;
+        }
+        .file-option {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .file-option label {
+            display: inline;
+            margin-right: 10px;
+        }
     </style>
 </head>
 <body>
@@ -33,8 +69,18 @@
         <a href="/add-image">Add Image</a>
         <a href="/settings">Settings</a>
     </div>
+    
     <h1>Add New Image</h1>
-    <form action="/add_image" method="post" enctype="multipart/form-data">
+    
+    <div id="errorMessage" class="error-message"></div>
+    
+    <form id="addImageForm" action="/add_image" method="post" enctype="multipart/form-data">
+        <div class="file-option">
+            <input type="checkbox" id="use_existing_file" name="use_existing_file" value="true">
+            <label for="use_existing_file">Use existing file in assets directory</label>
+            <p>If checked, the application will look for the file in the assets directory instead of uploading a new file.</p>
+        </div>
+
         <label for="filename">Filename:</label>
         <input type="text" id="filename" name="filename" required>
 
@@ -65,10 +111,56 @@
         <label for="type">Type:</label>
         <input type="text" id="type" name="type" required>
 
-        <label for="thumbnail">Original Image:</label>
-        <input type="file" id="thumbnail" name="thumbnail" accept="image/*">
+        <div id="upload_section">
+            <label for="thumbnail">Original Image:</label>
+            <input type="file" id="thumbnail" name="thumbnail" accept="image/*">
+        </div>
 
         <input type="submit" value="Add Image">
     </form>
+    
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        function showError(message) {
+            $('#errorMessage').text(message).show();
+            setTimeout(() => $('#errorMessage').hide(), 5000);
+        }
+        
+        $(document).ready(function() {
+            // Toggle file upload section based on checkbox
+            $('#use_existing_file').change(function() {
+                if(this.checked) {
+                    $('#upload_section').hide();
+                    $('#thumbnail').prop('required', false);
+                } else {
+                    $('#upload_section').show();
+                    $('#thumbnail').prop('required', true);
+                }
+            });
+            
+            $('#addImageForm').on('submit', function(e) {
+                // Form validation
+                const requiredFields = ['filename', 'url', 'file_size', 'rating', 'ranking', 'type'];
+                let isValid = true;
+                
+                requiredFields.forEach(field => {
+                    if (!$(`#${field}`).val()) {
+                        isValid = false;
+                        showError(`${field.charAt(0).toUpperCase() + field.slice(1)} is required`);
+                    }
+                });
+                
+                // Check if file is required and present
+                if (!$('#use_existing_file').is(':checked') && !$('#thumbnail').val()) {
+                    isValid = false;
+                    showError('Please select a file to upload or check "Use existing file"');
+                }
+                
+                if (!isValid) {
+                    e.preventDefault();
+                }
+            });
+        });
+    </script>
 </body>
 </html> 
