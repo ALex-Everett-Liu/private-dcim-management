@@ -39,6 +39,14 @@
             margin-bottom: 15px;
             display: none;
         }
+        .success-message {
+            color: #4CAF50;
+            background-color: #E8F5E9;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            display: none;
+        }
         input[type="submit"] {
             background-color: #4CAF50;
             color: white;
@@ -51,15 +59,28 @@
         input[type="submit"]:hover {
             background-color: #45a049;
         }
-        .file-option {
+        .file-option, .url-option {
             margin-bottom: 20px;
             padding: 10px;
             border: 1px solid #ddd;
             border-radius: 4px;
         }
-        .file-option label {
+        .file-option label, .url-option label {
             display: inline;
             margin-right: 10px;
+        }
+        .url-type-container {
+            margin-top: 10px;
+        }
+        .url-type-container label {
+            display: inline-block;
+            margin-right: 15px;
+        }
+        .url-input-container {
+            margin-top: 10px;
+        }
+        .hidden {
+            display: none;
         }
     </style>
 </head>
@@ -73,6 +94,7 @@
     <h1>Add New Image</h1>
     
     <div id="errorMessage" class="error-message"></div>
+    <div id="successMessage" class="success-message"></div>
     
     <form id="addImageForm" action="/add_image" method="post" enctype="multipart/form-data">
         <div class="file-option">
@@ -84,8 +106,36 @@
         <label for="filename">Filename:</label>
         <input type="text" id="filename" name="filename" required>
 
-        <label for="url">URL:</label>
-        <input type="url" id="url" name="url" required>
+        <div class="url-option">
+            <p>URL Type:</p>
+            <div class="url-type-container">
+                <input type="radio" id="url_type_local" name="url_type" value="local" checked>
+                <label for="url_type_local">Local URL</label>
+                
+                <input type="radio" id="url_type_filesystem" name="url_type" value="filesystem">
+                <label for="url_type_filesystem">Filesystem Path</label>
+                
+                <input type="radio" id="url_type_cloud" name="url_type" value="cloud">
+                <label for="url_type_cloud">Cloud URL</label>
+            </div>
+            
+            <div id="url_local_container" class="url-input-container">
+                <p>Local URL will be automatically generated as: <code>http://localhost:3011/assets/<span id="local_filename">filename</span></code></p>
+                <input type="hidden" id="url_local" name="url_local">
+            </div>
+            
+            <div id="url_filesystem_container" class="url-input-container hidden">
+                <p>Filesystem path will be automatically generated as: <code><span id="assets_dir">Q:\Picture@2025\static\assets</span>\<span id="filesystem_filename">filename</span></code></p>
+                <input type="hidden" id="url_filesystem" name="url_filesystem">
+            </div>
+            
+            <div id="url_cloud_container" class="url-input-container hidden">
+                <label for="url_cloud">Cloud URL:</label>
+                <input type="url" id="url_cloud" name="url_cloud" placeholder="https://firebasestorage.googleapis.com/...">
+            </div>
+            
+            <input type="hidden" id="url" name="url">
+        </div>
 
         <label for="file_size">File Size (e.g., 1.5 MB):</label>
         <input type="text" id="file_size" name="file_size" required>
@@ -126,7 +176,37 @@
             setTimeout(() => $('#errorMessage').hide(), 5000);
         }
         
+        function showSuccess(message) {
+            $('#successMessage').text(message).show();
+            setTimeout(() => $('#successMessage').hide(), 5000);
+        }
+        
+        function updateUrlField() {
+            const urlType = $('input[name="url_type"]:checked').val();
+            const filename = $('#filename').val();
+            
+            if (urlType === 'local') {
+                $('#url').val(`http://localhost:3011/assets/${filename}`);
+            } else if (urlType === 'filesystem') {
+                $('#url').val(`${$('#assets_dir').text()}\\${filename}`);
+            } else if (urlType === 'cloud') {
+                $('#url').val($('#url_cloud').val());
+            }
+        }
+        
         $(document).ready(function() {
+            // Get assets directory from server
+            $.ajax({
+                url: '/api/settings',
+                method: 'GET',
+                success: function(data) {
+                    $('#assets_dir').text(data.assetsDir);
+                },
+                error: function(err) {
+                    console.error('Error loading settings:', err);
+                }
+            });
+            
             // Toggle file upload section based on checkbox
             $('#use_existing_file').change(function() {
                 if(this.checked) {
@@ -138,9 +218,32 @@
                 }
             });
             
+            // Toggle URL input containers based on radio selection
+            $('input[name="url_type"]').change(function() {
+                $('.url-input-container').addClass('hidden');
+                $(`#url_${this.value}_container`).removeClass('hidden');
+                updateUrlField();
+            });
+            
+            // Update filename preview when filename changes
+            $('#filename').on('input', function() {
+                $('#local_filename').text(this.value);
+                $('#filesystem_filename').text(this.value);
+                updateUrlField();
+            });
+            
+            // Update URL when cloud URL changes
+            $('#url_cloud').on('input', function() {
+                if ($('input[name="url_type"]:checked').val() === 'cloud') {
+                    $('#url').val(this.value);
+                }
+            });
+            
             $('#addImageForm').on('submit', function(e) {
+                e.preventDefault();
+                
                 // Form validation
-                const requiredFields = ['filename', 'url', 'file_size', 'rating', 'ranking', 'type'];
+                const requiredFields = ['filename', 'file_size', 'rating', 'ranking', 'type'];
                 let isValid = true;
                 
                 requiredFields.forEach(field => {
@@ -150,6 +253,13 @@
                     }
                 });
                 
+                // Check URL
+                updateUrlField();
+                if (!$('#url').val()) {
+                    isValid = false;
+                    showError('URL is required');
+                }
+                
                 // Check if file is required and present
                 if (!$('#use_existing_file').is(':checked') && !$('#thumbnail').val()) {
                     isValid = false;
@@ -157,8 +267,26 @@
                 }
                 
                 if (!isValid) {
-                    e.preventDefault();
+                    return;
                 }
+                
+                // Submit form via AJAX
+                const formData = new FormData(this);
+                
+                $.ajax({
+                    url: '/add_image',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        showSuccess('Image added successfully!');
+                        setTimeout(() => window.location.href = '/', 2000);
+                    },
+                    error: function(xhr, status, error) {
+                        showError('Error adding image: ' + xhr.responseText);
+                    }
+                });
             });
         });
     </script>

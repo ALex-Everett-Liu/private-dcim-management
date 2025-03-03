@@ -233,7 +233,7 @@ async function setupServer(expressApp, electronApp) {
       }
     });
 
-    // Add image endpoint - modified to work with existing files
+    // Add image endpoint - modified to work with existing files and different URL formats
     expressApp.post('/add_image', upload.single('thumbnail'), async (req, res) => {
       try {
         console.log('Received add image request:', req.body);
@@ -241,6 +241,8 @@ async function setupServer(expressApp, electronApp) {
         const { 
           filename, 
           url, 
+          url_type,
+          url_cloud,
           file_size, 
           rating, 
           ranking, 
@@ -249,7 +251,7 @@ async function setupServer(expressApp, electronApp) {
           person = '', 
           location = '', 
           type,
-          use_existing_file = 'false' // New parameter to indicate if we should use an existing file
+          use_existing_file = 'false'
         } = req.body;
         
         // Validate required fields
@@ -334,7 +336,7 @@ async function setupServer(expressApp, electronApp) {
           thumbnailPath
         );
         
-        res.redirect('/');
+        res.status(200).send('Image added successfully');
       } catch (error) {
         console.error('Error adding image:', error);
         res.status(500).send('Error adding image: ' + error.message);
