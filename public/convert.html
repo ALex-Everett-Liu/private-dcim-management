@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebP Converter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        form {
+            background-color: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        label, input {
+            display: block;
+            margin-bottom: 10px;
+        }
+        .nav-links {
+            margin-bottom: 20px;
+        }
+        .nav-links a {
+            margin-right: 15px;
+        }
+        .error-message {
+            color: #f44336;
+            background-color: #ffebee;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        .success-message {
+            color: #4CAF50;
+            background-color: #E8F5E9;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        input[type="submit"] {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        input[type="submit"]:hover {
+            background-color: #45a049;
+        }
+        .result-container {
+            display: none;
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .stats-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        .stat-box {
+            flex: 1;
+            padding: 15px;
+            margin: 0 10px;
+            background-color: #e9e9e9;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .preview-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        .preview-image {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+        }
+        .preview-image img {
+            max-width: 100%;
+            max-height: 300px;
+            border: 1px solid #ddd;
+        }
+        .download-link {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #2196F3;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+        .download-link:hover {
+            background-color: #0b7dda;
+        }
+    </style>
+</head>
+<body>
+    <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/add-image">Add Image</a>
+        <a href="/settings">Settings</a>
+        <a href="/convert">WebP Converter</a>
+    </div>
+    
+    <h1>PNG/JPG to WebP Converter</h1>
+    
+    <div id="errorMessage" class="error-message"></div>
+    <div id="successMessage" class="success-message"></div>
+    
+    <form id="convertForm" enctype="multipart/form-data">
+        <h2>Convert Image to WebP</h2>
+        
+        <label for="image">Select Image (PNG/JPG):</label>
+        <input type="file" id="image" name="image" accept="image/png,image/jpeg" required>
+        
+        <label for="quality">Quality (1-100):</label>
+        <input type="number" id="quality" name="quality" min="1" max="100" value="80">
+        
+        <input type="submit" value="Convert to WebP">
+    </form>
+    
+    <div id="resultContainer" class="result-container">
+        <h2>Conversion Result</h2>
+        
+        <div class="stats-container">
+            <div class="stat-box">
+                <h3>Original Size</h3>
+                <p id="originalSize">-</p>
+            </div>
+            <div class="stat-box">
+                <h3>Converted Size</h3>
+                <p id="convertedSize">-</p>
+            </div>
+            <div class="stat-box">
+                <h3>Space Saved</h3>
+                <p id="spaceSaved">-</p>
+            </div>
+        </div>
+        
+        <div class="preview-container">
+            <div class="preview-image">
+                <h3>Original Image</h3>
+                <img id="originalPreview" src="" alt="Original Image">
+                <p id="originalFilename">-</p>
+            </div>
+            <div class="preview-image">
+                <h3>Converted WebP</h3>
+                <img id="convertedPreview" src="" alt="Converted Image">
+                <p id="convertedFilename">-</p>
+            </div>
+        </div>
+        
+        <a id="downloadLink" class="download-link" href="#" download>Download WebP Image</a>
+    </div>
+    
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            function showError(message) {
+                $('#errorMessage').text(message).show();
+                setTimeout(() => $('#errorMessage').hide(), 5000);
+            }
+            
+            function showSuccess(message) {
+                $('#successMessage').text(message).show();
+                setTimeout(() => $('#successMessage').hide(), 5000);
+            }
+            
+            // Handle form submission
+            $('#convertForm').on('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(this);
+                
+                // Show loading message
+                showSuccess('Converting image... Please wait.');
+                
+                $.ajax({
+                    url: '/api/convert',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        showSuccess('Image converted successfully!');
+                        
+                        // Update result container
+                        $('#originalSize').text(response.originalSize);
+                        $('#convertedSize').text(response.convertedSize);
+                        $('#spaceSaved').text(response.savingsPercent + '%');
+                        
+                        $('#originalFilename').text(response.originalFile);
+                        $('#convertedFilename').text(response.convertedFile);
+                        
+                        // Set up preview images
+                        // For original, we need to create a data URL from the file input
+                        const fileInput = document.getElementById('image');
+                        if (fileInput.files && fileInput.files[0]) {
+                            const reader = new FileReader();
+                            reader.onload = function(e) {
+                                $('#originalPreview').attr('src', e.target.result);
+                            };
+                            reader.readAsDataURL(fileInput.files[0]);
+                        }
+                        
+                        // For converted image
+                        $('#convertedPreview').attr('src', response.outputPath);
+                        
+                        // Set download link
+                        $('#downloadLink').attr('href', response.outputPath);
+                        $('#downloadLink').attr('download', response.convertedFile);
+                        
+                        // Show result container
+                        $('#resultContainer').show();
+                    },
+                    error: function(xhr, status, error) {
+                        showError('Error converting image: ' + (xhr.responseJSON?.error || error));
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html> 
