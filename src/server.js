@@ -371,7 +371,7 @@ function initializeDatabase(db) {
         url TEXT,
         file_size INTEGER,
         rating REAL,
-        ranking INTEGER,
+        ranking REAL,
         tags TEXT,
         creation_time TEXT,
         person TEXT,

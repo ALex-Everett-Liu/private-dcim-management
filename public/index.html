@@ -94,6 +94,22 @@
         <button id="apply-ranking-filter">Apply Filter</button>
     </div>
 
+    <!-- Add type filter dropdown -->
+    <div id="type-filter">
+        <label for="image-type">Image Type:</label>
+        <select id="image-type">
+            <option value="">All Types</option>
+            <option value="DCIM">DCIM</option>
+            <option value="re">re</option>
+            <option value="screenshot">Screenshot</option>
+            <option value="metropolis">Metropolis</option>
+            <option value="other">Other</option>
+            <option value="custom">Custom...</option>
+        </select>
+        <input type="text" id="custom-type" placeholder="Enter custom type" style="display: none;">
+        <button id="apply-type-filter">Apply Type Filter</button>
+    </div>
+
     <!-- Add an id to the table for DataTables -->
     <table id="favorite-images-table" class="display">
         <thead>
@@ -187,6 +203,25 @@
                         }
                     );
 
+                    // Custom filtering function for image type
+                    $.fn.dataTable.ext.search.push(
+                        function(settings, data, dataIndex) {
+                            var selectedType = $('#image-type').val();
+                            var customType = $('#custom-type').val().trim().toLowerCase();
+                            var imageType = data[10].toLowerCase(); // Assuming type is in the 11th column (index 10)
+                            
+                            // If "custom" is selected, use the custom type input
+                            if (selectedType === 'custom' && customType !== '') {
+                                return imageType === customType;
+                            }
+                            // If no type is selected or the image type matches the selected type
+                            else if (selectedType === '' || imageType === selectedType) {
+                                return true;
+                            }
+                            return false;
+                        }
+                    );
+
                     // Event listener for manual page input
                     $('#go-to-page').click(function() {
                         var page = parseInt($('#page-input').val(), 10);
@@ -201,6 +236,28 @@
                     // Event listener for the apply filter button
                     $('#apply-ranking-filter').click(function() {
                         table.draw();
+                    });
+
+                    // Show/hide custom type input based on selection
+                    $('#image-type').change(function() {
+                        if ($(this).val() === 'custom') {
+                            $('#custom-type').show();
+                        } else {
+                            $('#custom-type').hide();
+                        }
+                        table.draw();
+                    });
+
+                    // Event listener for the apply type filter button
+                    $('#apply-type-filter').click(function() {
+                        table.draw();
+                    });
+
+                    // Event listener for custom type input
+                    $('#custom-type').on('keyup', function() {
+                        if ($('#image-type').val() === 'custom') {
+                            table.draw();
+                        }
                     });
 
                     // Event listeners to redraw on input change
