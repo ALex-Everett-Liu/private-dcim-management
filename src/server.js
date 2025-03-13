@@ -391,6 +391,11 @@ async function setupServer(expressApp, electronApp) {
       }
     });
 
+    // Add route for image viewer
+    expressApp.get('/view', (req, res) => {
+      res.sendFile(path.join(__dirname, '..', 'public', 'image_viewer.html'));
+    });
+
     // Error handling middleware
     expressApp.use((err, req, res, next) => {
       console.error('Express error:', err);

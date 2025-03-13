@@ -157,8 +157,13 @@
                             { data: 'filename' },
                             { 
                                 data: 'url',
-                                render: function(data) {
-                                    return `<a href="${data}" target="_blank">${data}</a>`;
+                                render: function(data, type, row) {
+                                    // For display, create a link to the custom viewer
+                                    if (type === 'display') {
+                                        return `<a href="/view?path=${encodeURIComponent(data)}&title=${encodeURIComponent(row.filename)}" target="_blank">${data}</a>`;
+                                    }
+                                    // For all other types, return the original data
+                                    return data;
                                 }
                             },
                             { data: 'file_size' },
