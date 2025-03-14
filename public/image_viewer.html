@@ -66,6 +66,30 @@
             background-color: #555;
         }
         
+        .zoom-control {
+            display: inline-flex;
+            align-items: center;
+            margin: 0 8px;
+        }
+        
+        .zoom-control input {
+            width: 60px;
+            padding: 6px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            text-align: right;
+        }
+        
+        .zoom-control span {
+            margin: 0 4px;
+            color: white;
+        }
+        
+        .zoom-control button {
+            padding: 6px 10px;
+            margin-left: 4px;
+        }
+        
         /* Fullscreen styles */
         .fullscreen-container {
             position: fixed;
@@ -105,6 +129,11 @@
             <div class="controls">
                 <button id="zoom-in">Zoom In</button>
                 <button id="zoom-out">Zoom Out</button>
+                <div class="zoom-control">
+                    <input type="number" id="zoom-percent" min="10" max="1000" value="100">
+                    <span>%</span>
+                    <button id="apply-zoom">Apply</button>
+                </div>
                 <button id="rotate-left">Rotate Left</button>
                 <button id="rotate-right">Rotate Right</button>
                 <button id="fullscreen-toggle">Toggle Fullscreen</button>
@@ -123,6 +152,11 @@
         <div class="fullscreen-controls">
             <button id="fs-zoom-in">Zoom In</button>
             <button id="fs-zoom-out">Zoom Out</button>
+            <div class="zoom-control">
+                <input type="number" id="fs-zoom-percent" min="10" max="1000" value="100">
+                <span>%</span>
+                <button id="fs-apply-zoom">Apply</button>
+            </div>
             <button id="fs-rotate-left">Rotate Left</button>
             <button id="fs-rotate-right">Rotate Right</button>
             <button id="fs-exit">Exit Fullscreen</button>
@@ -173,6 +207,9 @@
             rotation = 0;
             updateFullscreenTransform();
             
+            // Update zoom percentage display
+            document.getElementById('fs-zoom-percent').value = 100;
+            
             // Request browser fullscreen
             if (document.documentElement.requestFullscreen) {
                 document.documentElement.requestFullscreen();
@@ -205,11 +242,28 @@
         document.getElementById('fs-zoom-in').addEventListener('click', () => {
             scale += 0.1;
             updateFullscreenTransform();
+            document.getElementById('fs-zoom-percent').value = Math.round(scale * 100);
         });
         
         document.getElementById('fs-zoom-out').addEventListener('click', () => {
             scale = Math.max(0.1, scale - 0.1);
             updateFullscreenTransform();
+            document.getElementById('fs-zoom-percent').value = Math.round(scale * 100);
+        });
+        
+        document.getElementById('fs-apply-zoom').addEventListener('click', () => {
+            const zoomPercent = parseInt(document.getElementById('fs-zoom-percent').value);
+            if (!isNaN(zoomPercent) && zoomPercent >= 10 && zoomPercent <= 1000) {
+                scale = zoomPercent / 100;
+                updateFullscreenTransform();
+            }
+        });
+        
+        // Allow Enter key to apply zoom
+        document.getElementById('fs-zoom-percent').addEventListener('keyup', (event) => {
+            if (event.key === 'Enter') {
+                document.getElementById('fs-apply-zoom').click();
+            }
         });
         
         document.getElementById('fs-rotate-left').addEventListener('click', () => {
@@ -227,10 +281,12 @@
         // Set up regular control buttons
         document.getElementById('zoom-in').addEventListener('click', () => {
             viewer.zoom(0.1);
+            updateZoomPercentage();
         });
         
         document.getElementById('zoom-out').addEventListener('click', () => {
             viewer.zoom(-0.1);
+            updateZoomPercentage();
         });
         
         document.getElementById('rotate-left').addEventListener('click', () => {
@@ -240,6 +296,39 @@
         document.getElementById('rotate-right').addEventListener('click', () => {
             viewer.rotate(90);
         });
+        
+        document.getElementById('apply-zoom').addEventListener('click', () => {
+            const zoomPercent = parseInt(document.getElementById('zoom-percent').value);
+            if (!isNaN(zoomPercent) && zoomPercent >= 10 && zoomPercent <= 1000) {
+                // Calculate the ratio to apply based on current zoom
+                const currentZoom = viewer.imageData.ratio;
+                const targetZoom = zoomPercent / 100;
+                const zoomRatio = targetZoom / currentZoom - 1;
+                
+                viewer.zoom(zoomRatio);
+            }
+        });
+        
+        // Allow Enter key to apply zoom
+        document.getElementById('zoom-percent').addEventListener('keyup', (event) => {
+            if (event.key === 'Enter') {
+                document.getElementById('apply-zoom').click();
+            }
+        });
+        
+        // Function to update zoom percentage display for regular view
+        function updateZoomPercentage() {
+            setTimeout(() => {
+                if (viewer && viewer.imageData) {
+                    const zoomPercent = Math.round(viewer.imageData.ratio * 100);
+                    document.getElementById('zoom-percent').value = zoomPercent;
+                }
+            }, 50);
+        }
+        
+        // Update zoom percentage when image is viewed
+        viewer.addEventListener('viewed', updateZoomPercentage);
+        viewer.addEventListener('zoomed', updateZoomPercentage);
         
         document.getElementById('fullscreen-toggle').addEventListener('click', enterCustomFullscreen);
         
