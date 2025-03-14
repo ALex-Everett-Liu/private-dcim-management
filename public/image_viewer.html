@@ -136,6 +136,7 @@
                 </div>
                 <button id="rotate-left">Rotate Left</button>
                 <button id="rotate-right">Rotate Right</button>
+                <button id="save-settings">Save Settings</button>
                 <button id="fullscreen-toggle">Toggle Fullscreen</button>
             </div>
         </div>
@@ -159,6 +160,7 @@
             </div>
             <button id="fs-rotate-left">Rotate Left</button>
             <button id="fs-rotate-right">Rotate Right</button>
+            <button id="fs-save-settings">Save Settings</button>
             <button id="fs-exit">Exit Fullscreen</button>
         </div>
     </div>
@@ -221,6 +223,8 @@
         }
         
         function exitCustomFullscreen() {
+            // No longer automatically save settings when exiting fullscreen
+            
             // Hide custom fullscreen container
             customFullscreen.style.display = 'none';
             
@@ -322,13 +326,133 @@
                 if (viewer && viewer.imageData) {
                     const zoomPercent = Math.round(viewer.imageData.ratio * 100);
                     document.getElementById('zoom-percent').value = zoomPercent;
+                    // Remove automatic saving
                 }
             }, 50);
         }
         
-        // Update zoom percentage when image is viewed
-        viewer.addEventListener('viewed', updateZoomPercentage);
-        viewer.addEventListener('zoomed', updateZoomPercentage);
+        // Function to save image settings to the server
+        function saveImageSettings(imagePath, settings) {
+            // Show a saving indicator
+            const saveStatus = document.createElement('div');
+            saveStatus.textContent = 'Saving...';
+            saveStatus.style.position = 'fixed';
+            saveStatus.style.top = '10px';
+            saveStatus.style.right = '10px';
+            saveStatus.style.padding = '5px 10px';
+            saveStatus.style.backgroundColor = 'rgba(0,0,0,0.7)';
+            saveStatus.style.color = 'white';
+            saveStatus.style.borderRadius = '3px';
+            saveStatus.style.zIndex = '10000';
+            document.body.appendChild(saveStatus);
+            
+            fetch('/api/image-settings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    imagePath: imagePath,
+                    settings: settings
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Settings saved:', data);
+                saveStatus.textContent = 'Settings saved!';
+                setTimeout(() => {
+                    saveStatus.style.opacity = '0';
+                    saveStatus.style.transition = 'opacity 0.5s';
+                    setTimeout(() => saveStatus.remove(), 500);
+                }, 1500);
+            })
+            .catch(error => {
+                console.error('Error saving settings:', error);
+                saveStatus.textContent = 'Error saving settings';
+                saveStatus.style.backgroundColor = 'rgba(255,0,0,0.7)';
+                setTimeout(() => {
+                    saveStatus.style.opacity = '0';
+                    saveStatus.style.transition = 'opacity 0.5s';
+                    setTimeout(() => saveStatus.remove(), 500);
+                }, 1500);
+            });
+        }
+        
+        // Add event listeners for the save settings buttons
+        document.getElementById('save-settings').addEventListener('click', () => {
+            if (viewer && viewer.imageData) {
+                const zoomPercent = Math.round(viewer.imageData.ratio * 100);
+                const rotation = viewer.imageData.rotate || 0;
+                
+                saveImageSettings(imagePath, {
+                    zoom: zoomPercent,
+                    rotation: rotation
+                });
+            }
+        });
+        
+        document.getElementById('fs-save-settings').addEventListener('click', () => {
+            saveImageSettings(imagePath, {
+                zoom: Math.round(scale * 100),
+                rotation: rotation
+            });
+        });
+        
+        // Function to load image settings from the server
+        function loadImageSettings(imagePath) {
+            fetch(`/api/image-settings?path=${encodeURIComponent(imagePath)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.settings) {
+                        console.log('Loaded settings:', data.settings);
+                        
+                        // Apply zoom if available
+                        if (data.settings.zoom && viewer && viewer.imageData) {
+                            const targetZoom = data.settings.zoom / 100;
+                            const currentZoom = viewer.imageData.ratio || 1;
+                            const zoomRatio = targetZoom / currentZoom - 1;
+                            
+                            // Apply the zoom after a short delay to ensure viewer is ready
+                            setTimeout(() => {
+                                viewer.zoom(zoomRatio);
+                                document.getElementById('zoom-percent').value = data.settings.zoom;
+                            }, 500);
+                        }
+                        
+                        // Apply rotation if available
+                        if (data.settings.rotation && viewer) {
+                            // Calculate how much to rotate to reach the saved rotation
+                            const currentRotation = viewer.imageData ? (viewer.imageData.rotate || 0) : 0;
+                            const rotationNeeded = data.settings.rotation - currentRotation;
+                            
+                            if (rotationNeeded !== 0) {
+                                setTimeout(() => {
+                                    viewer.rotate(rotationNeeded);
+                                }, 500);
+                            }
+                        }
+                        
+                        // For fullscreen view, also set the initial values
+                        if (data.settings.zoom) {
+                            document.getElementById('fs-zoom-percent').value = data.settings.zoom;
+                            scale = data.settings.zoom / 100;
+                        }
+                        
+                        if (data.settings.rotation) {
+                            rotation = data.settings.rotation;
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading settings:', error);
+                });
+        }
+        
+        // Load settings when the image is viewed
+        viewer.options.viewed = function() {
+            updateZoomPercentage();
+            loadImageSettings(imagePath);
+        };
         
         // Fix the fullscreen toggle button
         document.getElementById('fullscreen-toggle').addEventListener('click', toggleFullScreen);

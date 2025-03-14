@@ -396,6 +396,70 @@ async function setupServer(expressApp, electronApp) {
       res.sendFile(path.join(__dirname, '..', 'public', 'image_viewer.html'));
     });
 
+    // API route to save image settings
+    expressApp.post('/api/image-settings', express.json(), (req, res) => {
+      try {
+        const { imagePath, settings } = req.body;
+        
+        if (!imagePath) {
+          return res.status(400).json({ error: 'Image path is required' });
+        }
+        
+        // Get the filename from the path
+        const filename = path.basename(imagePath);
+        
+        // Check if settings already exist for this image
+        const existingSettings = db.prepare('SELECT * FROM image_settings WHERE filename = ?').get(filename);
+        
+        if (existingSettings) {
+          // Update existing settings
+          db.prepare('UPDATE image_settings SET settings = ? WHERE filename = ?')
+            .run(JSON.stringify(settings), filename);
+        } else {
+          // Insert new settings
+          db.prepare('INSERT INTO image_settings (filename, settings) VALUES (?, ?)')
+            .run(filename, JSON.stringify(settings));
+        }
+        
+        res.json({ success: true, message: 'Settings saved successfully' });
+      } catch (error) {
+        console.error('Error saving image settings:', error);
+        res.status(500).json({ error: 'Failed to save settings' });
+      }
+    });
+
+    // API route to get image settings
+    expressApp.get('/api/image-settings', (req, res) => {
+      try {
+        const imagePath = req.query.path;
+        
+        if (!imagePath) {
+          return res.status(400).json({ error: 'Image path is required' });
+        }
+        
+        // Get the filename from the path
+        const filename = path.basename(imagePath);
+        
+        // Get settings for this image
+        const settings = db.prepare('SELECT * FROM image_settings WHERE filename = ?').get(filename);
+        
+        if (settings && settings.settings) {
+          // Parse the JSON settings
+          try {
+            const parsedSettings = JSON.parse(settings.settings);
+            res.json({ success: true, settings: parsedSettings });
+          } catch (e) {
+            res.json({ success: false, settings: null });
+          }
+        } else {
+          res.json({ success: false, settings: null });
+        }
+      } catch (error) {
+        console.error('Error getting image settings:', error);
+        res.status(500).json({ error: 'Failed to get settings' });
+      }
+    });
+
     // Error handling middleware
     expressApp.use((err, req, res, next) => {
       console.error('Express error:', err);
@@ -433,6 +497,17 @@ function initializeDatabase(db) {
         thumbnail_path TEXT
       )
     `);
+    
+    // Add new table for image settings
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS image_settings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        filename TEXT UNIQUE,
+        settings TEXT,
+        last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
     return Promise.resolve();
   } catch (error) {
     console.error('Error initializing database:', error);
