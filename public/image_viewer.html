@@ -76,6 +76,7 @@
                 <button id="zoom-out">Zoom Out</button>
                 <button id="rotate-left">Rotate Left</button>
                 <button id="rotate-right">Rotate Right</button>
+                <button id="fullscreen-toggle">Toggle Fullscreen</button>
             </div>
         </div>
         <div class="main-content">
@@ -113,6 +114,24 @@
             keyboard: true,
         });
         
+        // Automatically enter full screen mode after viewer is initialized
+        document.addEventListener('DOMContentLoaded', function() {
+            // Short timeout to ensure viewer is fully initialized
+            setTimeout(() => {
+                viewer.full();
+                
+                // Request browser fullscreen
+                const elem = document.documentElement;
+                if (elem.requestFullscreen) {
+                    elem.requestFullscreen();
+                } else if (elem.webkitRequestFullscreen) { /* Safari */
+                    elem.webkitRequestFullscreen();
+                } else if (elem.msRequestFullscreen) { /* IE11 */
+                    elem.msRequestFullscreen();
+                }
+            }, 500);
+        });
+        
         // Set up control buttons
         document.getElementById('zoom-in').addEventListener('click', () => {
             viewer.zoom(0.1);
@@ -129,6 +148,35 @@
         document.getElementById('rotate-right').addEventListener('click', () => {
             viewer.rotate(90);
         });
+        
+        document.getElementById('fullscreen-toggle').addEventListener('click', toggleFullScreen);
+        
+        function toggleFullScreen() {
+            if (!document.fullscreenElement &&    // Standard property
+                !document.mozFullScreenElement && // Firefox
+                !document.webkitFullscreenElement && // Chrome, Safari and Opera
+                !document.msFullscreenElement) {  // IE/Edge
+                
+                // Request fullscreen
+                const elem = document.documentElement;
+                if (elem.requestFullscreen) {
+                    elem.requestFullscreen();
+                } else if (elem.webkitRequestFullscreen) { /* Safari */
+                    elem.webkitRequestFullscreen();
+                } else if (elem.msRequestFullscreen) { /* IE11 */
+                    elem.msRequestFullscreen();
+                }
+            } else {
+                // Exit fullscreen
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) { /* Safari */
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) { /* IE11 */
+                    document.msExitFullscreen();
+                }
+            }
+        }
         
         function goBack() {
             window.history.back();
