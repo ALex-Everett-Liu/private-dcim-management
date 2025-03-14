@@ -330,7 +330,22 @@
         viewer.addEventListener('viewed', updateZoomPercentage);
         viewer.addEventListener('zoomed', updateZoomPercentage);
         
-        document.getElementById('fullscreen-toggle').addEventListener('click', enterCustomFullscreen);
+        // Fix the fullscreen toggle button
+        document.getElementById('fullscreen-toggle').addEventListener('click', toggleFullScreen);
+        
+        function toggleFullScreen() {
+            if (!document.fullscreenElement &&    // Standard property
+                !document.mozFullScreenElement && // Firefox
+                !document.webkitFullscreenElement && // Chrome, Safari and Opera
+                !document.msFullscreenElement) {  // IE/Edge
+                
+                // Enter our custom fullscreen mode
+                enterCustomFullscreen();
+            } else {
+                // Exit fullscreen
+                exitCustomFullscreen();
+            }
+        }
         
         // Handle fullscreen change events
         document.addEventListener('fullscreenchange', function() {
@@ -347,6 +362,31 @@
         
         // Automatically enter fullscreen mode when page loads
         document.addEventListener('DOMContentLoaded', function() {
+            // Set up event listeners for all possible fullscreen buttons
+            setTimeout(() => {
+                // Try to find the button by text content
+                const allButtons = Array.from(document.querySelectorAll('button'));
+                const fullscreenButtons = allButtons.filter(btn => 
+                    btn.textContent.toLowerCase().includes('fullscreen') || 
+                    btn.className.toLowerCase().includes('fullscreen')
+                );
+                
+                fullscreenButtons.forEach(btn => {
+                    if (!btn._hasListener) {
+                        btn.addEventListener('click', toggleFullScreen);
+                        btn._hasListener = true;
+                        console.log('Added listener to fullscreen button:', btn.textContent || btn.className);
+                    }
+                });
+                
+                // Also try to find by class
+                const toggleBtn = document.querySelector('.toggle-fullscreen');
+                if (toggleBtn && !toggleBtn._hasListener) {
+                    toggleBtn.addEventListener('click', toggleFullScreen);
+                    toggleBtn._hasListener = true;
+                }
+            }, 1000);
+            
             setTimeout(enterCustomFullscreen, 500);
         });
         
